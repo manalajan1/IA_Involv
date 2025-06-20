@@ -1,0 +1,8 @@
+sounddevice
+numpy
+opencv-python
+mediapipe
+flask
+plotly
+pyttsx3
+gunicorn

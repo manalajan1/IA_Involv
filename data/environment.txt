@@ -1,0 +1,1 @@
+{"co2": 498, "temperature": 18.1, "humidity": 46, "noise": 40}
