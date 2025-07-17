@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4" style="max-inline-size: 500px;">
+  <div class="card shadow">
+    <div class="card-body">
+      <h2 class="card-title mb-4 text-primary">Votre retour sur la session</h2>
+      <form method="post">
+        <div class="mb-3">
+          <label class="form-label"><strong>Qualité sonore :</strong></label>
+          <select name="sound_quality" class="form-select" required>
+            <option>Très bonne</option>
+            <option>Bonne</option>
+            <option>Moyenne</option>
+            <option>Mauvaise</option>
+          </select>
+        </div>
+        <div class="mb-3">
+          <label class="form-label"><strong>Confort de l’environnement :</strong></label>
+          <select name="environment_comfort" class="form-select" required>
+            <option>Confortable</option>
+            <option>Acceptable</option>
+            <option>Inconfortable</option>
+          </select>
+        </div>
+        <div class="mb-3">
+          <label class="form-label"><strong>Niveau d’attention ressenti (1-10) :</strong></label>
+          <input type="number" name="attention_level" min="1" max="10" class="form-control" required>
+        </div>
+        <div class="mb-3">
+          <label class="form-label"><strong>Commentaires :</strong></label>
+          <textarea name="comment" rows="4" class="form-control"></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary w-100">Envoyer</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

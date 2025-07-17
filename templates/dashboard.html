@@ -1,0 +1,224 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="d-flex justify-content-end mb-3">
+  <a href="/feedback" class="btn btn-outline-primary me-2">📝 Donner mon avis</a>
+  <a href="/export/attention" class="btn btn-outline-secondary" id="export-csv-btn">📥 Exporter les scores (.csv)</a>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card text-white bg-primary mb-3">
+            <div class="card-body">
+                <h5 class="card-title">Score d'attention</h5>
+                <h2 class="card-text" id="attention-score">0%</h2>
+                <p class="card-text" id="attention-delta">--</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-info mb-3">
+            <div class="card-body">
+                <h5 class="card-title">Moyenne session</h5>
+                <h2 class="card-text" id="average-score">0%</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-success mb-3">
+            <div class="card-body">
+                <h5 class="card-title">Participation</h5>
+                <h2 class="card-text" id="participation">0%</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-warning mb-3">
+            <div class="card-body">
+                <h5 class="card-title">Qualité air</h5>
+                <h2 class="card-text" id="air-quality">--</h2>
+                <p class="card-text" id="co2-level">--</p>
+                <p class="text-light" id="student-adjustment">Ajustement étudiant : --%</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="progress mb-4" style="height: 20px;">
+    <div id="attention-progress" class="progress-bar" role="progressbar" style="inline-size: 0%"></div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Attention récente</h5>
+                <div id="attention-chart"></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Environnement</h5>
+                <div id="environment-chart"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Suggestions pédagogiques</h5>
+                <div id="suggestions" class="alert alert-info">
+                    Chargement des suggestions...
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Étudiants</h5>
+                <div id="students-container">
+                    <p class="text-muted">Aucun étudiant détecté</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="settingsModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Paramètres</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="alertThreshold" class="form-label">Seuil d'alerte (%)</label>
+                    <input type="range" class="form-range" min="0" max="100" id="alertThreshold">
+                    <div class="text-center" id="thresholdValue">40%</div>
+                </div>
+                <div class="mb-3">
+                    <label for="updateInterval" class="form-label">Fréquence de mise à jour (secondes)</label>
+                    <input type="number" class="form-control" id="updateInterval" min="1" max="10" value="2">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+                <button type="button" class="btn btn-primary" id="saveSettings">Enregistrer</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let updateInterval = 2000;
+let alertThreshold = 40;
+
+function updateData() {
+    $.get('/data', function(data) {
+        $('#attention-score').text(data.score.toFixed(1) + '%');
+        const avgScore = data.history.length ? (data.history.reduce((a, b) => a + b, 0) / data.history.length) : 0;
+        $('#average-score').text(avgScore.toFixed(1) + '%');
+        $('#participation').text(data.audio.talking.toFixed(1) + '%');
+
+        const airQuality = data.environment.co2 < 1000 ? '✅ Bon' : '⚠️ Élevé';
+        $('#air-quality').text(airQuality);
+        $('#co2-level').text(data.environment.co2 + ' ppm');
+
+        const adjustment = data.environment.adjustment || 0;
+        $('#student-adjustment').text('Ajustement étudiant : ' + adjustment.toFixed(1) + '%');
+
+        const progress = data.score;
+        $('#attention-progress').css('width', progress + '%');
+        $('#attention-progress').attr('aria-valuenow', progress);
+        $('#attention-progress').removeClass('bg-danger bg-warning bg-success');
+
+        if (progress < alertThreshold) {
+            $('#attention-progress').addClass('bg-danger');
+        } else if (progress < 70) {
+            $('#attention-progress').addClass('bg-warning');
+        } else {
+            $('#attention-progress').addClass('bg-success');
+        }
+
+        Plotly.react('attention-chart', JSON.parse(data.attention_chart), {});
+        Plotly.react('environment-chart', JSON.parse(data.environment_chart), {});
+
+        updateStudents(data.attention.individual);
+        updateSuggestions(data.score);
+    });
+}
+
+function updateStudents(students) {
+    if (Object.keys(students).length === 0) {
+        $('#students-container').html('<p class="text-muted">Aucun étudiant détecté</p>');
+        return;
+    }
+
+    let html = '<div class="row">';
+    for (const [id, score] of Object.entries(students)) {
+        const studentNum = id.split('_')[1];
+        let progressClass = score < alertThreshold ? 'bg-danger' : (score < 70 ? 'bg-warning' : 'bg-success');
+
+        html += `
+        <div class="col-md-4 mb-3">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Étudiant ${studentNum}</h5>
+                    <div class="progress mb-2" style="block-size: 20px;">
+                        <div class="progress-bar ${progressClass}" role="progressbar" style="inline-size: ${score}%"></div>
+                    </div>
+                    <p class="card-text text-end">${score.toFixed(1)}%</p>
+                </div>
+            </div>
+        </div>`;
+    }
+    html += '</div>';
+    $('#students-container').html(html);
+}
+
+function updateSuggestions(score) {
+    let html = '';
+    if (score < 40) {
+        html = `<div class="alert alert-danger"><b>Attention faible :</b> Faites une pause, posez une question, ou changez d'activité.</div>`;
+    } else if (score < 70) {
+        html = `<div class="alert alert-warning"><b>Attention moyenne :</b> Encouragez la participation, variez le rythme.</div>`;
+    } else {
+        html = `<div class="alert alert-success"><b>Bonne attention :</b> Continuez ainsi !</div>`;
+    }
+    $('#suggestions').html(html);
+}
+
+$(document).ready(function() {
+    updateData();
+    setInterval(updateData, updateInterval);
+
+    $('#settingsModal').on('show.bs.modal', function() {
+        $('#alertThreshold').val(alertThreshold);
+        $('#thresholdValue').text(alertThreshold + '%');
+        $('#updateInterval').val(updateInterval / 1000);
+    });
+
+    $('#alertThreshold').on('input', function() {
+        $('#thresholdValue').text($(this).val() + '%');
+    });
+
+    $('#saveSettings').click(function() {
+        alertThreshold = parseInt($('#alertThreshold').val());
+        updateInterval = parseInt($('#updateInterval').val()) * 1000;
+        $('#settingsModal').modal('hide');
+    });
+});
+</script>
+{% endblock %}

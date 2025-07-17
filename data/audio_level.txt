@@ -1,0 +1,3 @@
+volume:4.60
+talking:30.0
+noise:1.38

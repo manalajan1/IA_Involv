@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2 class="mb-4">🗒️ Avis des étudiants</h2>
+
+<table class="table table-bordered table-striped">
+  <thead class="table-dark">
+    <tr>
+      <th scope="col">Date</th>
+      <th scope="col">Qualité sonore</th>
+      <th scope="col">Confort</th>
+      <th scope="col">Attention (1-10)</th>
+      <th scope="col">Commentaires</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for feedback in feedbacks %}
+    <tr>
+      <td>{{ feedback.date }}</td>
+      <td>{{ feedback.sound }}</td>
+      <td>{{ feedback.comfort }}</td>
+      <td>{{ feedback.attention }}</td>
+      <td>{{ feedback.comment }}</td>
+    </tr>
+    {% else %}
+    <tr>
+      <td colspan="5" class="text-center">Aucun avis encore enregistré.</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<a href="/" class="btn btn-secondary mt-3">← Retour au tableau de bord</a>
+{% endblock %}
